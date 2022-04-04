@@ -176,13 +176,13 @@ class GithubApiHelper
 	/**
 	 * Get all closed and merged PRs with the translation label since a given timestamp
 	 *
-	 * @param   DateTime  $since  The timestamp since we want new data
+	 * @param   \DateTimeInterface  $since  The timestamp since we want new data
 	 *
 	 * @return  array  An array of github Issue objects
 	 *
 	 * @since   1.0
 	 */
-	public function getClosedAndMergedTranslationIssuesList($since): array
+	public function getClosedAndMergedTranslationIssuesList(\DateTimeInterface $since): array
 	{
 		// Get all closed issues with the translation label
 		$closedIssues = $this->getClosedTranslationIssuesList($since);
@@ -208,15 +208,56 @@ class GithubApiHelper
 	}
 
 	/**
+	 * @param   \DateTimeInterface  $since  The timestamp since we want new data
+	 * @param   integer             $page   The page number from which to get items
+	 *
+	 * @return  integer
+	 *
+	 * @since   __DEPLOY_VERSION__
+	 */
+	public function checkClosedAndMergedTranslationIssuesList(\DateTimeInterface $since, $page = null): int
+	{
+		// Get all closed issues with the translation label
+		$closedIssues = $this->getClosedTranslationIssuesListAll($since, $page);
+		$prs = 0;
+		$output = "Id;Title;Closed;ClosedTime;Issue;User;Link\n";
+
+		foreach ($closedIssues as $issue)
+		{
+			$closedAt = new \DateTime($issue->closed_at);
+
+			if ($closedAt < $since)
+			{
+				continue;
+			}
+
+			if ($this->github->pulls->isMerged($this->getOption('source.owner'), $this->getOption('source.repo'), $issue->number))
+			{
+				$prs += 1;
+				$JGermanIssue = $this->getJGermanIssue($issue->number);
+				$output .= "{$issue->number};{$issue->title};{$issue->closed_at};";
+				$output .= $closedAt->format('H:i:s') . ";";
+				$output .= $JGermanIssue ? "{$JGermanIssue->source->issue->number};{$JGermanIssue->actor->login};" : ';;';
+				$output .= "{$issue->html_url}\n";
+			}
+		}
+
+		$dataFileName = $this->getDateFileName('prmerged.csv');
+		file_put_contents($dataFileName, $output);
+
+		return $prs;
+	}
+
+	/**
 	 * Get all closed issues with the translation label since a given timestamp
 	 *
-	 * @param   DateTime  $since  The timestamp since we want new data
+	 * @param   \DateTimeInterface  $since  The timestamp since we want new data
 	 *
 	 * @return  array  an array of github Issue objects
 	 *
 	 * @since   1.0
 	 */
-	private function getClosedTranslationIssuesList($since)
+	private function getClosedTranslationIssuesList(\DateTimeInterface $since)
 	{
 		// List all closed issues with the watchlabel
 		$state  = 'closed';
@@ -225,6 +266,68 @@ class GithubApiHelper
 		return $this->github->issues->getListByRepository(
 			$this->getOption('source.owner'), $this->getOption('source.repo'), NULL, $state, NULL, NULL, $labels, NULL, NULL, $since
 		);
+	}
+
+	/**
+	 * Get all closed issues with the translation label since a given timestamp
+	 *
+	 * @param   \DateTimeInterface  $since  The timestamp since we want new data
+	 * @param   integer             $page   The page number from which to get items
+	 *
+	 * @return  array  an array of github Issue objects
+	 *
+	 * @since   __DEPLOY_VERSION__
+	 */
+	private function getClosedTranslationIssuesListAll(\DateTimeInterface $since, $page = null)
+	{
+		// List all closed issues with the watchlabel
+		$state  = 'closed';
+		$labels = urlencode($this->getOption('source.watchlabel'));
+
+		if ($page > 0)
+		{
+			return $this->github->issues->getListByRepository(
+				$this->getOption('source.owner'), $this->getOption('source.repo'), NULL, $state, NULL, NULL, $labels, NULL, NULL, $since, $page
+			);
+		}
+		else
+		{
+			return $this->github->issuesext->getListByRepositoryAll(
+				$this->getOption('source.owner'), $this->getOption('source.repo'), NULL, $state, NULL, NULL, $labels, NULL, NULL, $since
+			);
+		}
+	}
+
+	/**
+	 * @param   integer  $issueId  The issue number.
+	 *
+	 * @return  object|boolean
+	 *
+	 * @since   __DEPLOY_VERSION__
+	 */
+	private function getJGermanIssue($issueId)
+	{
+		$timeline = $this->github->issues->timeline->getAll($this->getOption('source.owner'), $this->getOption('source.repo'), $issueId);
+		$eventret = false;
+
+		foreach ($timeline as $event)
+		{
+			if ($event->event === 'cross-referenced'
+				&& $event->source->type === 'issue'
+				&& $event->source->issue->repository->full_name === 'joomlagerman/joomla')
+			{
+				if ($event->actor->login == 'jgerman-bot')
+				{
+					return $event;
+				}
+				elseif (!$eventret)
+				{
+					$eventret = $event;
+				}
+			}
+		}
+
+		return $eventret;
 	}
 
 	/**
