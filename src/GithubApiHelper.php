@@ -146,6 +146,34 @@ class GithubApiHelper
 	}
 
 	/**
+	 * @param   integer  $pullId  The pull request number.
+	 *
+	 * @return  string  The pull request number.
+	 *
+	 * @since   __DEPLOY_VERSION__
+	 */
+	public function getIssue($pullId)
+	{
+		$sourcePull = $this->getSourcePull($pullId);
+
+		$sourcePullDiff = $this->getSourcePullDiff($pullId);
+		$sourcePullDiffText = $sourcePull->title . PHP_EOL . PHP_EOL . $sourcePull->_links->html->href . PHP_EOL . PHP_EOL .
+		'<details>' . PHP_EOL . '<summary>Click to expand the diff!</summary>' . PHP_EOL . PHP_EOL .
+		'```diff' . PHP_EOL . $sourcePullDiff . PHP_EOL . '```' . PHP_EOL . '</details>' . PHP_EOL;
+
+		$dataFileName = $this->getDateFileName('isssue' . $pullId . '.txt');
+
+		if (is_file($dataFileName))
+		{
+			unlink($dataFileName);
+		}
+
+		file_put_contents($dataFileName, $sourcePullDiffText);
+
+		return 'issue#' . $pullId;
+	}
+
+	/**
 	 * Get all closed and merged PRs with the translation label since a given timestamp
 	 *
 	 * @param   DateTime  $since  The timestamp since we want new data
@@ -227,16 +255,7 @@ class GithubApiHelper
 	 */
 	private function getSourcePullDiff($pullrequestId)
 	{
-		$uri = new Uri(
-			'https://api.github.com/repos/'
-			. $this->getOption('source.owner')
-			. '/'
-			. $this->getOption('source.repo')
-			. '/pulls/'
-			. (int) $pullrequestId
-		);
-
-		return HttpFactory::getHttp()->get($uri->toString(), ['Accept' => 'application/vnd.github.v3.diff', 'User-Agent' => $this->getOption('userAgent'), 'Authorization' => 'token ' . GITHUB_AUTHTOKEN])->body;
+		return $this->github->pulls->diff->get($this->getOption('source.owner'), $this->getOption('source.repo'), $pullrequestId);
 	}
 
 	/**

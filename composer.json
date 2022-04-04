@@ -14,7 +14,8 @@
     },
     "autoload": {
         "psr-4": {
-            "joomlagerman\\Helper\\": "src/"
+            "joomlagerman\\Helper\\": "src/",
+            "Joomla\\Github\\Package\\": "srcGithub/"
         }
     }
 }
