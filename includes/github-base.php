@@ -9,12 +9,10 @@
 use Joomla\Registry\Registry;
 use joomlagerman\Helper\GithubApiHelper;
 use joomlagerman\Helper\LogHelper;
-use joomlagerman\Helper\NotifyerHelper;
 
 // GitHub API Setup
 $githubOptions = new Registry;
-$githubOptions->set('api.username', GITHUB_USERNAME);
-$githubOptions->set('headers', ['Authorization' => 'token ' . GITHUB_AUTHTOKEN]);
+$githubOptions->set('gh.token', GITHUB_AUTHTOKEN);
 
 $options = new Registry;
 $options->set('source.owner', GITHUB_SOURCE_OWNER);
@@ -30,17 +28,3 @@ $githubApiHelper = new GithubApiHelper($githubOptions, $options);
 
 // LogHelper Setup
 $logHelper = new LogHelper(['logName' => 'jgerman']);
-
-// Notifyer Setup
-$notifyerOptions = new Registry;
-$notifyerOptions->set('slack.enabled', NOTIFYER_SLACK_ENABED);
-$notifyerOptions->set('slack.webhookurl', NOTIFYER_SLACK_WEBHOOKURL);
-$notifyerOptions->set('slack.username', NOTIFYER_SLACK_USERNAME);
-$notifyerOptions->set('mattermost.enabled', NOTIFYER_MATTERMOST_ENABED);
-$notifyerOptions->set('mattermost.webhookurl', NOTIFYER_MATTERMOST_WEBHOOKURL);
-$notifyerOptions->set('telegram.enabled', NOTIFYER_TELEGRAM_ENABED);
-$notifyerOptions->set('telegram.botToken', NOTIFYER_TELEGRAM_BOTTOKEN);
-$notifyerOptions->set('telegram.chatId', NOTIFYER_TELEGRAM_CHATID);
-$notifyerOptions->set('notifyer.messageTemplate', NOTIFYER_GITHUB_ISSUE_MESSAGE_TEMPLATE);
-
-$notifierHelper = new NotifyerHelper($notifyerOptions);
